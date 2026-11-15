@@ -1,199 +1,188 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Leaf Disease Detection System</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8">
+  <title>Leaf Disease Detection System</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+  
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f7f4;
+      text-align: center;
+      margin: 0;
+      padding: 20px;
+    }
 
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+    h1 {
+      color: #176b36;
+    }
 
-<style>
-body {
-  font-family: Arial, sans-serif;
-  background: #f4f7f4;
-  text-align: center;
-  margin: 0;
-  padding: 20px;
-}
+    video {
+      width: 100%;
+      max-width: 450px;
+      border-radius: 12px;
+      background: #222;
+    }
 
-h1 {
-  color: #176b36;
-}
+    button {
+      background: #176b36;
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      margin: 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+    }
 
-video {
-  width: 100%;
-  max-width: 450px;
-  border-radius: 12px;
-  background: #222;
-}
+    button:hover {
+      background: #0d4c25;
+    }
 
-button {
-  background: #176b36;
-  color: white;
-  border: none;
-  padding: 12px 20px;
-  margin: 8px;
-  border-radius: 6px;
-  cursor: pointer;
-}
+    #results {
+      background: white;
+      max-width: 450px;
+      margin: 20px auto;
+      padding: 15px;
+      border-radius: 10px;
+      text-align: left;
+    }
 
-button:hover {
-  background: #0d4c25;
-}
-
-#results {
-  background: white;
-  max-width: 450px;
-  margin: 20px auto;
-  padding: 15px;
-  border-radius: 10px;
-  text-align: left;
-}
-
-#preview {
-  border-radius: 10px;
-  margin: 10px;
-  max-width: 100%;
-}
-
-</style>
+    #preview {
+      border-radius: 10px;
+      margin: 10px;
+      max-width: 100%;
+    }
+  </style>
 </head>
 <body>
 
-    <h1>Leaf Disease Detection System</h1>
-    <p>Real-Time Image Classification Using Teachable Machine</p>
+  <h1>Leaf Disease Detection System</h1>
+  <p>Real-Time Image Classification Using Teachable Machine</p>
 
-    <h3>Camera Preview</h3>
-    <video id="camera" autoplay playsinline muted></video>
+  <h3>Camera Preview</h3>
+  <video id="camera" autoplay playsinline muted></video>
 
-    <br><br>
-    <button onclick="startCamera()">Start Camera</button>
-    <button onclick="stopCamera()">Stop Camera</button>
+  <br><br>
+  <button onclick="startCamera()">Start Camera</button>
+  <button onclick="stopCamera()">Stop Camera</button>
 
-<h3>Upload Leaf Image</h3>
-<input type="file"
+  <h3>Upload Leaf Image</h3>
+  <input type="file"
     id="imageUpload"
     accept="image/*"
-    capture="environment"
     onchange="classifyImage(event)">
-<br><br>
-<img id="preview" style="max-width:300px; display:none;">
+  <br><br>
+  <img id="preview" style="max-width:300px; display:none;">
 
-    <h3>Classification Results</h3>
-    <div id="results">Waiting for image classification...</div>
+  <h3>Classification Results</h3>
+  <div id="results">Model loaded successfully. Ready for classification.</div>
 
-    <script>
-const MODEL_URL = "my-model/";
-let model;
+  <script>
+    let model;
 
-async function loadModel() {
-  
-  try {
-    model = await tmImage.load(
-      MODEL_URL + "model.json",
-      MODEL_URL + "metadata.json"
-    );
-
-    console.log("Model successfully loaded!");
-    document.getElementById("results").innerHTML = 
-      "Model loaded successfully. Ready for classification.";
-      
-  } catch (error) {
-    console.error(error);
-    document.getElementById("results").innerHTML = 
-      "Error loading model. Check your model files.";
-  }
-}
-
-let stream = null;
-
-async function startCamera() {
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: { ideal: "environment" }
-      },
-      audio: false
-    });
-
-    const video = document.getElementById("camera");
-    video.srcObject = stream;
-    await video.play();
-    detecting = true;
-    detectLeaf();
-    console.log("Camera started successfully!");
-  } catch (error) {
-    alert("Unable to access camera: " + error.message);
-  }
-}
-
-function stopCamera() {
-  detecting = false;
-
-  if (stream) {
-    stream.getTracks().forEach(track => track.stop());
-    stream = null;
-    const video = document.getElementById("camera");
-    video.srcObject = null;
-  }
-}
-
-let detecting = false;
-
-async function detectLeaf() {
-  const video = document.getElementById("camera");
-
-  while (detecting && stream) {
-    if (video.readyState >= 2) {
-      const predictions = await model.predict(video);
-      displayResults(predictions);
+    async function loadModel() {
+      try {
+        const modelURL = 'my-model/model.json';
+        const metadataURL = 'my-model/metadata.json';
+        model = await tmImage.load(modelURL, metadataURL);
+        console.log("Model loaded successfully!");
+        document.getElementById("results").innerHTML = 
+          "Model loaded successfully. Ready for classification.";
+      } catch (error) {
+        console.error(error);
+        document.getElementById("results").innerHTML = 
+          "Error loading model. Check your model files.";
+      }
     }
-    await new Promise(resolve => setTimeout(resolve, 300));
-  }
-}
 
-function displayResults(predictions) {
-  const results = document.getElementById("results");
+    let stream = null;
+    let detecting = false;
 
-  const sorted = [...predictions].sort(
-    (a, b) => b.probability - a.probability
-  );
+    async function startCamera() {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" },
+          audio: false
+        });
 
-  let output = "";
+        const video = document.getElementById("camera");
+        video.srcObject = stream;
+        await video.play();
 
-  sorted.forEach(item => {
-    const confidence = (item.probability * 100).toFixed(2);
+        detecting = true;
+        detectLeaf();
 
-    output +=
-      <p><strong>${item.className}</strong>: ${confidence}%</p>;
-  });
+        console.log("Camera started successfully!");
+      } catch (error) {
+        alert("Unable to access camera: " + error.message);
+      }
+    }
 
-  results.innerHTML = output;
-}
+    function stopCamera() {
+      detecting = false;
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+      }
+      const video = document.getElementById("camera");
+      video.srcObject = null;
+    }
 
-async function classifyImage(event) {
-  const file = event.target.files[0];
-  if (!file) return;
+    async function detectLeaf() {
+      const video = document.getElementById("camera");
+      while (detecting && stream) {
+        if (video.readyState >= 2) {
+          const predictions = await model.predict(video);
+          displayResults(predictions);
+        }
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
+    }
 
-  const image = document.getElementById("preview");
-  const imageURL = URL.createObjectURL(file);
+    function displayResults(predictions) {
+      const results = document.getElementById("results");
+      const sorted = [...predictions].sort(
+        (a, b) => b.probability - a.probability
+      );
 
-  try {
-    image.src = imageURL;
-    image.style.display = "block";
-    await image.decode();
+      let output = "";
+      sorted.forEach(item => {
+        const confidence = (item.probability * 100).toFixed(2);
+        output += `<p><strong>${item.className}</strong>: ${confidence}%</p>`;
+      });
 
-    const predictions = await model.predict(image);
-    displayResults(predictions);
-  } catch (error) {
-    alert("Unable to classify image: " + error.message);
-  } finally {
-    URL.revokeObjectURL(imageURL);
-  }
-}
+      results.innerHTML = output;
+    }
 
-loadModel();
-</script>
+    async function classifyImage(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const image = document.getElementById("preview");
+      const imageURL = URL.createObjectURL(file);
+
+      try {
+        image.src = imageURL;
+        image.style.display = "block";
+        await image.decode();
+
+        const predictions = await model.predict(image);
+        displayResults(predictions);
+      } catch (error) {
+        alert("Unable to classify image: " + error.message);
+      } finally {
+        URL.revokeObjectURL(imageURL);
+      }
+    }
+
+    loadModel();
+  </script>
+
 </body>
 </html>
+ 
