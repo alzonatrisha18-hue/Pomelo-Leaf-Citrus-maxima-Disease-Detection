@@ -1,188 +1,382 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8">
-<title>Pomelo Leaf (Citrus maxima) Disease Detection System</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
-  
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f4f7f4;
-      text-align: center;
-      margin: 0;
-      padding: 20px;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    h1 {
-      color: #176b36;
-    }
+    <title>Pomelo Leaf (Citrus maxima) Disease Detection</title>
 
-    video {
-      width: 100%;
-      max-width: 450px;
-      border-radius: 12px;
-      background: #222;
-    }
+    <!-- TensorFlow.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
 
-    button {
-      background: #176b36;
-      color: white;
-      border: none;
-      padding: 12px 20px;
-      margin: 8px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 16px;
-    }
+    <!-- Teachable Machine -->
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
 
-    button:hover {
-      background: #0d4c25;
-    }
+    <style>
+        * {
+            box-sizing: border-box;
+        }
 
-    #results {
-      background: white;
-      max-width: 450px;
-      margin: 20px auto;
-      padding: 15px;
-      border-radius: 10px;
-      text-align: left;
-    }
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f7f4;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
 
-    #preview {
-      border-radius: 10px;
-      margin: 10px;
-      max-width: 100%;
-    }
-  </style>
+        h1 {
+            color: #176b36;
+        }
+
+        h2, h3 {
+            color: #176b36;
+        }
+
+        p {
+            line-height: 1.5;
+        }
+
+        video {
+            width: 100%;
+            max-width: 450px;
+            border-radius: 12px;
+            background: #222;
+            margin: 10px auto;
+        }
+
+        button {
+            background: #176b36;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            margin: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 15px;
+        }
+
+        button:hover {
+            background: #0d4c25;
+        }
+
+        button:disabled {
+            background: #999;
+            cursor: not-allowed;
+        }
+
+        input[type="file"] {
+            margin: 15px;
+            padding: 10px;
+            background: white;
+            border-radius: 6px;
+        }
+
+        #results {
+            background: white;
+            max-width: 450px;
+            margin: 20px auto;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: left;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        #preview {
+            border-radius: 10px;
+            margin: 10px;
+            max-width: 100%;
+            max-height: 300px;
+            object-fit: contain;
+        }
+
+        footer {
+            margin-top: 30px;
+            color: #666;
+            font-size: 13px;
+        }
+
+        @media screen and (max-width: 600px) {
+            body {
+                padding: 15px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            button {
+                padding: 11px 15px;
+            }
+        }
+    </style>
 </head>
+
 <body>
 
-  <h1>Leaf Disease Detection System</h1>
-  <p>Real-Time Image Classification Using Teachable Machine</p>
+    <h1>Pomelo Leaf (Citrus maxima) Disease Detection</h1>
 
-  <h3>Camera Preview</h3>
-  <video id="camera" autoplay playsinline muted></video>
+    <p>
+        Development of a Web-Based Pomelo Leaf
+        (Citrus maxima) Disease Detection and
+        Classification System Using Image Classification
+    </p>
 
-  <br><br>
-  <button onclick="startCamera()">Start Camera</button>
-  <button onclick="stopCamera()">Stop Camera</button>
+    <h3>Camera Preview</h3>
 
-  <h3>Upload Leaf Image</h3>
-  <input type="file"
-    id="imageUpload"
-    accept="image/*"
-    onchange="classifyImage(event)">
-  <br><br>
-  <img id="preview" style="max-width:300px; display:none;">
+    <video id="camera" autoplay playsinline muted></video>
 
-  <h3>Classification Results</h3>
-  <div id="results">Model loaded successfully. Ready for classification.</div>
+    <br><br>
 
-  <script>
-    let model;
+    <button id="startButton" onclick="startCamera()" disabled>
+        Start Camera
+    </button>
 
-    async function loadModel() {
-      try {
-        const modelURL = 'my-model/model.json';
-        const metadataURL = 'my-model/metadata.json';
-        model = await tmImage.load(modelURL, metadataURL);
-        console.log("Model loaded successfully!");
-        document.getElementById("results").innerHTML = 
-          "Model loaded successfully. Ready for classification.";
-      } catch (error) {
-        console.error(error);
-        document.getElementById("results").innerHTML = 
-          "Error loading model. Check your model files.";
-      }
-    }
+    <button onclick="stopCamera()">
+        Stop Camera
+    </button>
 
-    let stream = null;
-    let detecting = false;
+    <h3>Upload Leaf Image</h3>
 
-    async function startCamera() {
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" },
-          audio: false
-        });
+    <input
+        type="file"
+        id="imageUpload"
+        accept="image/*"
+        capture="environment"
+        onchange="classifyImage(event)"
+    >
 
-        const video = document.getElementById("camera");
-        video.srcObject = stream;
-        await video.play();
+    <br><br>
 
-        detecting = true;
-        detectLeaf();
+    <img
+        id="preview"
+        style="max-width:300px; display:none;"
+        alt="Uploaded pomelo leaf"
+    >
 
-        console.log("Camera started successfully!");
-      } catch (error) {
-        alert("Unable to access camera: " + error.message);
-      }
-    }
+    <h3>Classification Results</h3>
 
-    function stopCamera() {
-      detecting = false;
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-        stream = null;
-      }
-      const video = document.getElementById("camera");
-      video.srcObject = null;
-    }
+    <div id="results">
+        Loading model...
+    </div>
+    <script>
 
-    async function detectLeaf() {
-      const video = document.getElementById("camera");
-      while (detecting && stream) {
-        if (video.readyState >= 2) {
-          const predictions = await model.predict(video);
-          displayResults(predictions);
+
+        const MODEL_URL = "./my-model/";
+
+        let model;
+        let stream = null;
+        let detecting = false;
+
+
+        // LOAD MODEL
+        async function loadModel() {
+
+            try {
+
+                model = await tmImage.load(
+                    MODEL_URL + "model.json",
+                    MODEL_URL + "metadata.json"
+                );
+
+                console.log("Model successfully loaded!");
+
+                document.getElementById("results").innerHTML =
+                    "<p>Model loaded successfully. Ready for classification.</p>";
+
+                document.getElementById("startButton").disabled = false;
+
+            } catch (error) {
+
+                console.error("Model loading error:", error);
+
+                document.getElementById("results").innerHTML =
+                    "<p>Error loading model. Check your model files.</p>";
+
+            }
         }
-        await new Promise(resolve => setTimeout(resolve, 300));
-      }
-    }
 
-    function displayResults(predictions) {
-      const results = document.getElementById("results");
-      const sorted = [...predictions].sort(
-        (a, b) => b.probability - a.probability
-      );
+        async function startCamera() {
 
-      let output = "";
-      sorted.forEach(item => {
-        const confidence = (item.probability * 100).toFixed(2);
-        output += `<p><strong>${item.className}</strong>: ${confidence}%</p>`;
-      });
+            if (!model) {
+                alert("Please wait for the model to load.");
+                return;
+            }
 
-      results.innerHTML = output;
-    }
+            if (stream) {
+                return;
+            }
 
-    async function classifyImage(event) {
-      const file = event.target.files[0];
-      if (!file) return;
+            if (!navigator.mediaDevices ||
+                !navigator.mediaDevices.getUserMedia) {
 
-      const image = document.getElementById("preview");
-      const imageURL = URL.createObjectURL(file);
+                alert(
+                    "Camera access requires HTTPS or localhost. " +
+                    "Please open your secure website link."
+                );
 
-      try {
-        image.src = imageURL;
-        image.style.display = "block";
-        await image.decode();
+                return;
+            }
 
-        const predictions = await model.predict(image);
-        displayResults(predictions);
-      } catch (error) {
-        alert("Unable to classify image: " + error.message);
-      } finally {
-        URL.revokeObjectURL(imageURL);
-      }
-    }
+            try {
 
-    loadModel();
-  </script>
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: { ideal: "environment" }
+                    },
+                    audio: false
+                });
+
+                const video = document.getElementById("camera");
+
+                video.srcObject = stream;
+
+                await video.play();
+
+                console.log("Camera started successfully!");
+
+                detecting = true;
+
+                detectLeaf();
+
+            } catch (error) {
+
+                console.error("Camera error:", error);
+
+                alert("Unable to access camera: " + error.message);
+
+                stream = null;
+
+            }
+        }
+
+        function stopCamera() {
+
+            detecting = false;
+
+            if (stream) {
+
+                stream.getTracks().forEach(track => track.stop());
+
+                stream = null;
+
+                document.getElementById("camera").srcObject = null;
+
+                console.log("Camera stopped successfully!");
+
+            }
+        }
+
+        async function detectLeaf() {
+
+            const video = document.getElementById("camera");
+
+            while (detecting && stream) {
+
+                try {
+
+                    if (video.readyState >= 2 && model) {
+
+                        const predictions = await model.predict(video);
+
+                        if (detecting) {
+                            displayResults(predictions);
+                        }
+
+                    }
+
+                } catch (error) {
+
+                    console.error("Classification error:", error);
+
+                }
+
+                await new Promise(resolve =>
+                    setTimeout(resolve, 300)
+                );
+
+            }
+        }
+
+
+        function displayResults(predictions) {
+
+            const results = document.getElementById("results");
+
+            const sorted = [...predictions].sort(
+                (a, b) => b.probability - a.probability
+            );
+
+            const bestPrediction = sorted[0];
+
+            let output = `
+                <h3>Detected Class:</h3>
+                <h2>${bestPrediction.className}</h2>
+
+                <h3>Confidence: ${(bestPrediction.probability * 100).toFixed(2)}%</h3>
+
+                <hr>
+
+                <p><strong>All Predictions:</strong></p>
+            `;
+
+            sorted.forEach(item => {
+
+                const confidence =
+                    (item.probability * 100).toFixed(2);
+
+                output += `
+                    <p>
+                        <strong>${item.className}</strong>:
+                        ${confidence}%
+                    </p>
+                `;
+
+            });
+
+            results.innerHTML = output;
+        }
+
+
+        async function classifyImage(event) {
+
+            if (!model) {
+                alert("Please wait for the model to load.");
+                return;
+            }
+
+            const file = event.target.files[0];
+
+            if (!file) {
+                return;
+            }
+
+            const image = document.getElementById("preview");
+
+            const imageURL = URL.createObjectURL(file);
+            try {
+                image.src = imageURL;
+                image.style.display = "block";
+                await image.decode();
+                const predictions = await model.predict(image);
+                displayResults(predictions);
+                console.log("Image classified successfully!");
+
+            } catch (error) {
+                console.error("Image classification error:", error);
+                alert("Unable to classify image: " + error.message);
+            } finally {
+                URL.revokeObjectURL(imageURL);
+
+            }
+        }
+
+
+        loadModel();
+
+    </script>
 
 </body>
 </html>
- 
